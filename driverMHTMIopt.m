@@ -184,11 +184,16 @@ function MIobjfun =MIGHQuadMHT(hOpt,NGauss,NumberUncertain,Nspecies,Ntime,GaussL
     crhostdd = [ 589716 ];       % [J/m^3/K]
     crholb   = [ 1531084 ];       % [J/m^3/K]
     crhoub   = [ 4056000 ];       % [J/m^3/K]
-    %% domain magnetization 
-    mdmean = [ 446000 ];      % [A/m]
-    mdstdd = [ 100000 ];      % [A/m]
-    mdlb   = [ 200000 ];      % [A/m]
-    mdub   = [ 500000 ];      % [A/m]
+    %% domain magnetization
+    % Mass specific magnetization of Fe3O4 ranges from 30 to 80 emu/g
+    % Density of Fe3O4 is 5180 kg/mm3 
+    % conversion of emu/cm3 to A/m will need 1000 factor
+    % Hence 30-80 emu/g is equivalent to Density (in kg/m3)* X (in emu/g) A/m 
+
+    mdmean = [ 40*5180 ];      % [A/m]
+    mdstdd = [ 10*5180 ];      % [A/m]
+    mdlb   = [ 30*5180 ];      % [A/m]
+    mdub   = [ 80*5180 ];      % [A/m]
 
     %% signal uncertianty
     signu = sqrt(2* Ntime) * .1;
@@ -355,18 +360,21 @@ end
 %%% Solver Time Iterations
 for n = 2:TS
     H = HVector(n-1); %
+    if H == 0
+        SAR = 0;
+    else
     zeta = mu0*Md*H*MNP_svol/(kB*T_bK);                 % [-] Langevin parameter
     X_i = mu0*(Md^2)*MNP_vol_frac*MNP_svol/(3*kB*T_bK); % [-] Initial Magnetic Susceptibility
     X_0 = 3*X_i*(coth(zeta)-1/zeta)/zeta;               % [-] Equilibrium Magnetic Susceptibility
     X_L = X_0*omega*tauE/(1+(omega*tauE)^2);            % [-] Loss Component of Magnetic Susceptibility
     P = pi*mu0*f*X_L*H^2;                               % [W/m3] Heat Generation rate of MNPs in MF
     SAR = P/(rho_mnp*MNP_vol_frac);                     % [W/kg] MNP Specific Absorption Rate
-    SAR_grams = SAR/1000;                               % [W/g] MNP Specific Absorption Rate
-
+    SAR_grams = SAR/1000;                              % [W/g] MNP Specific Absorption Rate
+    end
     %%% Heat Source by MNP in Tumor
     MNP_conc = MNP_mass/vol_t;      % [kg/m3] Concentration of MNP in Tumor, Assuming MNPs are distributed uniformly and confined within the tumor only
     Q_MNP = alpha_CF*MNP_conc*SAR;  % [W/m3] Heat Generation by MNP in Tissue
-
+    
     %%% Assign Q_MNP to the center region only
     q_mnp = Q_MNP*t_loc;        % MNP heat generation [W/m^3] On/Off Pulsating with time
     q_mnp_time(:,n-1) = q_mnp;
